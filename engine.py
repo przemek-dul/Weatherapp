@@ -34,14 +34,7 @@ class Engine:
             self.no_connection = True
 
     def update_data(self):
-        file_name = 'data.json'
-        if os.path.isfile(file_name):
-            mod_time = os.path.getmtime(file_name)
-            mod_time = datetime.datetime.fromtimestamp(mod_time).strftime('%Y-%m-%d-%H')
-            if str(datetime.datetime.today().strftime('%Y-%m-%d-%H')) != str(mod_time):
-                self.download_data()
-        else:
-            self.download_data()
+        self.download_data()
         if not self.no_connection:
             self.info = self.open_data()
 

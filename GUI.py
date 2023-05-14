@@ -1,6 +1,6 @@
 import PyQt5.QtWidgets as wg
 from PyQt5.QtGui import QPixmap, QIcon
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
 import sys
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from engine import Engine
@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import json
 import os
 from deep_translator import GoogleTranslator
+import time
 
 
 class Figure(FigureCanvas):
@@ -17,7 +18,19 @@ class Figure(FigureCanvas):
         self.setParent(parent)
 
 
-class App(wg.QMainWindow):
+class Thread(QThread):
+    updateData = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super(Thread, self).__init__(parent)
+
+    def run(self):
+        while True:
+            time.sleep(120)
+            self.updateData.emit()
+
+
+class App(wg.QWidget):
     def __init__(self):
         super().__init__()
         self.setFixedSize(765, 600)
@@ -30,6 +43,7 @@ class App(wg.QMainWindow):
         self.day = 0
         self.curr_polt = "temp"
         self.initUI()
+        self.show()
 
 
     def initUI(self):
@@ -165,6 +179,9 @@ class App(wg.QMainWindow):
         self.select_rain_plot_btn.setStyleSheet(self.set_style_to_select_btn())
         self.select_rain_plot_btn.clicked.connect(self.rain_clicked)
 
+        self.th = Thread()
+        self.run_thread()
+
     def rain_clicked(self):
         self.select_temp_plot_btn.setStyleSheet(self.set_style_to_select_btn(False))
         self.select_rain_plot_btn.setStyleSheet(self.set_style_to_select_btn(True))
@@ -186,7 +203,6 @@ class App(wg.QMainWindow):
         self.my_canvas = Figure(fig=self.engine.plot(self.day))
         self.plot_container_layout.addWidget(self.my_canvas)
         self.curr_polt = "temp"
-
     def set_img(self, day):
         data = self.engine.get_img(day)
         if data != "bd.":
@@ -264,9 +280,18 @@ class App(wg.QMainWindow):
             with open(file_name, 'r') as file:
                 data = json.load(file)
                 city = data["city"]
+                city = GoogleTranslator(source='pl', target='en').translate(city)
                 self.engine = Engine(city)
         else:
             self.engine = Engine("London")
+
+    def run_thread(self):
+        self.th.updateData.connect(self.engine_update)
+        self.th.start()
+
+    def engine_update(self):
+        self.engine.update_data()
+        self.update_data()
 
 
 def save_last_city():
@@ -278,7 +303,6 @@ def save_last_city():
 if __name__ == "__main__":
     app = wg.QApplication(sys.argv)
     a = App()
-    a.show()
     app.aboutToQuit.connect(save_last_city)
-    sys.exit(app.exec())
+    sys.exit(app.exec_())
 
